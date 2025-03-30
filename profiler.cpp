@@ -1,6 +1,7 @@
 #include <intrin.h>
 
 static Profile_Array profile_array;
+static b32 profiler_initiated = false;
 
 static void copy_func_name(char *dest, char *src, u32 size)
 {
@@ -94,6 +95,7 @@ static void print_profile(char *name, Profile *profile)
 
 static void begin_profile()
 {
+    profiler_initiated = true;
     profile_array = {};
     void *data = VirtualAlloc(0, 6144, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     profile_array.profiles = (Profile *)data;
@@ -104,6 +106,11 @@ static void begin_profile()
 //TODO: Cycle through the profiles you've made and process/print them
 static void end_profile()
 {
+    if(!profiler_initiated)
+    {
+        fprintf(stdout, "ERROR: Cannot end profile when no profile was initiated.");
+        return;
+    }
     profile_array.program_end_time = read_cpu_timer();
 
     u64 os_freq = get_os_timer_freq();
@@ -125,6 +132,7 @@ static void end_profile()
     fprintf(stdout, "  Program: %llu || (%%%f)\n", cpu_freq, (f64)(program_elapsed*100)/(f64)program_elapsed);
 }
 
+// TODO: Wrap the creation of these with a check of the profiler init bool
 class Profiler
 {
     Profile profile;
