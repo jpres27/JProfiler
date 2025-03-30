@@ -63,7 +63,7 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
        Instead, it attempts to follow, as closely as possible, the formula used in the real-world
        question on which these homework exercises are loosely based.
     */
-    
+
     f64 lat1 = Y0;
     f64 lat2 = Y1;
     f64 lon1 = X0;
@@ -98,6 +98,8 @@ static void *push_struct(void *dest, void* src, size_t size)
 
 static int parse_points_json(Buffer *file_buffer, Buffer *data_buffer)
 {
+    PROFILE_FUNCTION;
+
     int result = 0;
     char *buffer = (char *)file_buffer->data;
     void *memory = data_buffer->data;
@@ -135,7 +137,7 @@ static int parse_points_json(Buffer *file_buffer, Buffer *data_buffer)
 
 int main(int arg_count, char **args) {
 
-    u64 cpu_start = read_cpu_timer();
+    begin_profile();
 
     size_t data_storage_size = (size_t)(1024*1024*1024*0.6);
     size_t result_storage_size = (size_t)(1024*1024*1024*0.15);
@@ -156,10 +158,15 @@ int main(int arg_count, char **args) {
 
     Point *data = (Point *)data_buffer.data;
     f64 *results = (f64 *)result_buffer.data;
-    for(int i = 0; i <= num_points; ++i)
+
     {
-        //fprintf(stdout, "X0:%f Y0:%f X1:%f Y1:%f\n", data[i].x0, data[i].y0, data[i].x1, data[i].y1);
-        results[i] = ReferenceHaversine(data[i].x0, data[i].y0, data[i].x1, data[i].y1, 6372.8);
+        PROFILE_SCOPE("haversine");
+        
+        for(int i = 0; i <= num_points; ++i)
+        {
+            //fprintf(stdout, "X0:%f Y0:%f X1:%f Y1:%f\n", data[i].x0, data[i].y0, data[i].x1, data[i].y1);
+            results[i] = ReferenceHaversine(data[i].x0, data[i].y0, data[i].x1, data[i].y1, 6372.8);
+        }
     }
 
     u64 cpu_h_calc_end = read_cpu_timer();
@@ -182,7 +189,7 @@ int main(int arg_count, char **args) {
     free_buffer(&data_buffer);
     free_buffer(&result_buffer);
 
-    u64 cpu_end = read_cpu_timer();
+    end_profile();
 
     return 0;
 }

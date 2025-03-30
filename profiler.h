@@ -5,7 +5,7 @@ struct Profile
     u64 end_time;
 };
 
-struct Profile_Array
+struct Prof_Buffer
 {
     Profile *profiles;
     Profile *current_free_space;

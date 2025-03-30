@@ -1,6 +1,6 @@
 #include <intrin.h>
 
-static Profile_Array profile_array;
+static Prof_Buffer prof_buffer;
 static b32 profiler_initiated = false;
 
 static void copy_func_name(char *dest, char *src, u32 size)
@@ -76,31 +76,34 @@ static u64 get_os_elapsed()
 
 static void push_profile(Profile profile)
 {
-    if(profile_array.num_profiles < profile_array.size)
+    if(prof_buffer.num_profiles+1 < prof_buffer.size)
     {
-        *profile_array.current_free_space = profile;
-        ++profile_array.current_free_space;
-        ++profile_array.num_profiles;
+        *prof_buffer.current_free_space = profile;
+        ++prof_buffer.current_free_space;
+        ++prof_buffer.num_profiles;
     }
     else
     {
-        fprintf(stdout, "Warning: Out of free space in Profile_Array\n");
+        fprintf(stdout, "Warning: Out of free space in prof_buffer\n");
     }
 }
 
-static void print_profile(char *name, Profile *profile)
+static void print_profile(char *name, u64 elapsed, f64 percentage)
 {
-
+    fprintf(stdout, "  %s: %llu elapsed || %%%.3f\n", name, elapsed, percentage);
 }
 
 static void begin_profile()
 {
+    Profile get_size = {};
     profiler_initiated = true;
-    profile_array = {};
+    prof_buffer = {};
     void *data = VirtualAlloc(0, 6144, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-    profile_array.profiles = (Profile *)data;
-    profile_array.current_free_space = (Profile *)data;
-    profile_array.program_begin_time = read_cpu_timer();
+    prof_buffer.profiles = (Profile *)data;
+    prof_buffer.current_free_space = (Profile *)data;
+    prof_buffer.size = 6144 / sizeof(get_size);
+
+    prof_buffer.program_begin_time = read_cpu_timer();
 }
 
 //TODO: Cycle through the profiles you've made and process/print them
@@ -111,12 +114,12 @@ static void end_profile()
         fprintf(stdout, "ERROR: Cannot end profile when no profile was initiated.");
         return;
     }
-    profile_array.program_end_time = read_cpu_timer();
+    prof_buffer.program_end_time = read_cpu_timer();
 
     u64 os_freq = get_os_timer_freq();
     u64 os_elapsed = get_os_elapsed();
 
-    u64 program_elapsed = profile_array.program_end_time - profile_array.program_begin_time;
+    u64 program_elapsed = prof_buffer.program_end_time - prof_buffer.program_begin_time;
 
     u64 cpu_freq = 0;
 
@@ -125,16 +128,25 @@ static void end_profile()
         cpu_freq = os_freq * program_elapsed / os_elapsed;
     }
     
-    fprintf(stdout, "  CPU Timer: %llu -> %llu = %llu elapsed\n", profile_array.program_begin_time, profile_array.program_end_time, program_elapsed);
+    fprintf(stdout, "  CPU Timer: %llu -> %llu = %llu elapsed\n", prof_buffer.program_begin_time, prof_buffer.program_end_time, program_elapsed);
 	fprintf(stdout, "  CPU Freq: %llu (guessed)\n\n", cpu_freq);
 
     // NOTE: Formula for percentage is (program_section_elapsed*100) / program_elapsed
-    fprintf(stdout, "  Program: %llu || (%%%f)\n", cpu_freq, (f64)(program_elapsed*100)/(f64)program_elapsed);
+    fprintf(stdout, "  Program: %llu elapsed\n\n", cpu_freq);
+
+    for(u32 i = 0; i < prof_buffer.num_profiles; ++i)
+    {
+        u64 elapsed = prof_buffer.profiles[i].end_time - prof_buffer.profiles[i].begin_time;
+        f64 percentage_of_time = (f64)(elapsed*100)/(f64)program_elapsed;
+        print_profile(prof_buffer.profiles[i].func_name, elapsed, percentage_of_time);
+    }
+    fprintf(stdout, "\n");
 }
 
 // TODO: Wrap the creation of these with a check of the profiler init bool
 class Profiler
 {
+    public:
     Profile profile;
 
     Profiler(char *func_name)
@@ -150,3 +162,6 @@ class Profiler
         push_profile(this->profile);
     }
 };
+
+#define PROFILE_FUNCTION Profiler profiler(__func__)
+#define PROFILE_SCOPE(name) Profiler profiler(name)
