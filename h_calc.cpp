@@ -29,6 +29,7 @@ static void free_buffer(Buffer *buffer)
 
 static void load_memory_from_file(char *filename, Buffer *buffer)
 {
+    PROFILE_FUNCTION;
     FILE *file = fopen(filename, "rb");
     if(file)
     {  
@@ -64,6 +65,7 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
        question on which these homework exercises are loosely based.
     */
 
+    PROFILE_FUNCTION;
     f64 lat1 = Y0;
     f64 lat2 = Y1;
     f64 lon1 = X0;
@@ -84,6 +86,7 @@ static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius)
 
 static void *push_struct(void *dest, void* src, size_t size)
 {
+    PROFILE_FUNCTION;
     char *d = (char *)dest;
     char *s = (char *)src;
 
@@ -160,8 +163,8 @@ int main(int arg_count, char **args) {
     f64 *results = (f64 *)result_buffer.data;
 
     {
-        PROFILE_SCOPE("haversine");
-        
+        PROFILE_BLOCK("Haversine");
+
         for(int i = 0; i <= num_points; ++i)
         {
             //fprintf(stdout, "X0:%f Y0:%f X1:%f Y1:%f\n", data[i].x0, data[i].y0, data[i].x1, data[i].y1);
